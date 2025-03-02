@@ -1,0 +1,58 @@
+# -*- coding: utf-8 -*-
+import os
+import glob
+import nltk
+from nltk.tokenize import sent_tokenize
+import pickle
+from sentence_transformers import SentenceTransformer
+from config import DATA_DIR, EMBEDDING_MODEL_NAME, CHUNK_SIZE, CHUNK_OVERLAP
+
+nltk.download('punkt')
+
+def chunk_text(text, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP):
+    sentences = sent_tokenize(text)
+    chunks = []
+    current_chunk = []
+    current_length = 0
+
+    for sentence in sentences:
+        if current_length + len(sentence.split()) <= chunk_size:
+            current_chunk.append(sentence)
+            current_length += len(sentence.split())
+        else:
+            chunks.append(" ".join(current_chunk))
+            overlap_tokens = current_chunk[-chunk_overlap:] if chunk_overlap < len(current_chunk) else current_chunk
+            current_chunk = overlap_tokens
+            current_length = sum(len(s.split()) for s in current_chunk)
+            current_chunk.append(sentence)
+            current_length += len(sentence.split())
+
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+
+    return chunks
+
+def main():
+    embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    all_files = glob.glob(os.path.join(DATA_DIR, "*.txt"))
+
+    data_records = []
+
+    for file_path in all_files:
+        with open(file_path, "r", encoding="utf-8") as f:
+            text = f.read()
+
+        text_chunks = chunk_text(text)
+
+        for chunk in text_chunks:
+            embedding = embedding_model.encode(chunk)
+            data_records.append({"chunk": chunk, "embedding": embedding})
+
+    with open("embeddings_data.pkl", "wb") as f:
+        pickle.dump(data_records, f)
+
+    print(f"Total chunks créés : {len(data_records)}")
+    print("Embeddings enregistrés dans embeddings_data.pkl")
+
+if __name__ == "__main__":
+    main()

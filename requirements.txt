@@ -1,0 +1,11 @@
+faiss-cpu
+numpy
+pandas
+tqdm
+nltk
+openai
+transformers
+sentence-transformers
+langchain
+pydantic
+
